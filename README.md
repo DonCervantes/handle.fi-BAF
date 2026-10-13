@@ -1,26 +1,32 @@
-# handle.fi-BAF
+# Handle.Fi
 
-Repositorio del proyecto **Handle.Fi** para BAF (BB101).
+Front del producto Handle.Fi (Next.js). El código del front está en la carpeta `frontend/`.
 
-**Problema:** dificultad para controlar de principio a fin los pagos de pymes mexicanas a colaboradores en otros países.
+## Requisitos
 
-Estructura adaptada desde la plantilla [ProyectoBase](https://github.com/mestupinanm/ProyectoBase/tree/429a622a9eac19b92d96bab6f87b129ed8a6334d).
+- [Node.js](https://nodejs.org/) 18.17 o superior
+- npm (incluido con Node.js)
 
-## Entregables
+## Instalación
 
-```text
-handle.fi-BAF/
-└── docs/
-    ├── semana1/
-    │   ├── DanielAdrian.md    ← propuesta individual (Fase 1)
-    │   └── ProblemBrief.md    ← entregable grupal (Fase 2)
-    ├── semana2/
-    ├── semana3/
-    ├── semana4/
-    └── semana5/
+```bash
+cd frontend
+npm install
 ```
 
-Las carpetas `semana2` a `semana5` quedan reservadas para los entregables siguientes.
+## Cómo correrlo
 
-**Integrante:** Daniel Adrián Elías Cruz Cervantes ([DonCervantes](https://github.com/DonCervantes))  
-**Entrega de semana 1:** 27 de septiembre de 2026, 10:00 a. m., hora de Ciudad de México.
+```bash
+cd frontend
+npm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en el navegador.
+
+Para generar la versión de producción:
+
+```bash
+cd frontend
+npm run build
+npm run start
+```
