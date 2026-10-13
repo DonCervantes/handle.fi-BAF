@@ -11,8 +11,11 @@ import { PlusCircle, RotateCcw, Search } from "lucide-react";
 const FILTERS: { value: PaymentStatus | "todos"; label: string }[] = [
   { value: "todos", label: "Todos" },
   { value: "pendiente_autorizacion", label: "Pendientes" },
-  { value: "en_transito", label: "En tránsito" },
-  { value: "recibido", label: "Recibidos" },
+  { value: "autorizado", label: "Autorizados" },
+  { value: "enviado", label: "Enviados" },
+  { value: "confirmado", label: "Confirmados" },
+  { value: "fallido", label: "Fallidos" },
+  { value: "rechazado", label: "Rechazados" },
 ];
 
 export default function Dashboard() {
@@ -31,8 +34,10 @@ export default function Dashboard() {
     });
   }, [payments, filter, q]);
 
-  const totalMXN = payments.reduce((s, p) => s + p.cost.totalCostMXN, 0);
-  const recibidos = payments.filter((p) => p.status === "recibido").length;
+  const totalMXN = payments
+    .filter((p) => p.status !== "rechazado" && p.status !== "fallido")
+    .reduce((s, p) => s + p.cost.totalCostMXN, 0);
+  const confirmados = payments.filter((p) => p.status === "confirmado").length;
   const pendientes = payments.filter(
     (p) => p.status === "pendiente_autorizacion"
   ).length;
@@ -59,7 +64,7 @@ export default function Dashboard() {
       {/* KPIs */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <Kpi label="Costo total gestionado" value={fmtMXN(totalMXN)} />
-        <Kpi label="Pagos recibidos" value={`${recibidos} / ${payments.length}`} />
+        <Kpi label="Confirmados en la red" value={`${confirmados} / ${payments.length}`} />
         <Kpi label="Pendientes de autorizar" value={String(pendientes)} />
       </div>
 

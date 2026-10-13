@@ -1,50 +1,48 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Payment, Country, PaymentStatus } from "./types";
+import type { Payment, Country } from "./types";
 import { calcCost } from "./pricing";
 
-const KEY = "handlefi.payments.v1";
+const KEY = "handlefi.payments.v2";
 
 // ── Datos de ejemplo (seed) ──
+// Sin pagos "confirmados": un pago solo se confirma con una transacción real en testnet.
 function seed(): Payment[] {
+  const now = Date.now();
   const mk = (
-    id: string,
+    n: number,
     beneficiary: string,
     country: Country,
     concept: string,
     amountMXN: number,
-    status: PaymentStatus,
-    ref: string,
+    hoursAgo: number,
     extra: Partial<Payment> = {}
   ): Payment => ({
-    id,
-    reference: ref,
+    id: `p-${n}`,
+    reference: `HF-2026-${n}`,
     beneficiary,
     country,
     concept,
     cost: calcCost(amountMXN, country),
-    status,
-    createdAt: new Date(Date.now() - Math.random() * 6e8).toISOString(),
+    status: "pendiente_autorizacion",
+    createdAt: new Date(now - hoursAgo * 36e5).toISOString(),
     ...extra,
   });
 
   return [
-    mk("p-1004", "Valentina Ríos", "CO", "Diseño UI — Octubre", 18000, "recibido", "HF-2026-1004", {
+    mk(1004, "Valentina Ríos", "CO", "Diseño UI — Octubre", 1800, 2),
+    mk(1003, "Mateo Fernández", "AR", "Desarrollo backend — Octubre", 2500, 20, {
+      status: "autorizado",
       authorizedBy: "Daniel Cruz (Admin)",
-      authorizedAt: new Date(Date.now() - 5e8).toISOString(),
-      stellarTxHash: "",
-      receiptName: "comprobante-1004.pdf",
+      authorizedAt: new Date(now - 18 * 36e5).toISOString(),
     }),
-    mk("p-1003", "Mateo Fernández", "AR", "Desarrollo backend — Octubre", 25000, "en_transito", "HF-2026-1003", {
+    mk(1002, "Catalina Soto", "CL", "QA y pruebas — Octubre", 1450, 30, {
+      status: "rechazado",
       authorizedBy: "Daniel Cruz (Admin)",
-      authorizedAt: new Date(Date.now() - 2e8).toISOString(),
+      authorizedAt: new Date(now - 28 * 36e5).toISOString(),
     }),
-    mk("p-1002", "Catalina Soto", "CL", "QA y pruebas — Octubre", 14500, "autorizado", "HF-2026-1002", {
-      authorizedBy: "Daniel Cruz (Admin)",
-      authorizedAt: new Date(Date.now() - 1e8).toISOString(),
-    }),
-    mk("p-1001", "Samuel Duarte", "CO", "Soporte técnico — Octubre", 9000, "pendiente_autorizacion", "HF-2026-1001"),
+    mk(1001, "Samuel Duarte", "CO", "Soporte técnico — Octubre", 900, 48),
   ];
 }
 
@@ -92,9 +90,10 @@ export function createPayment(input: {
   country: Country;
   concept: string;
   amountMXN: number;
+  destination?: string;
 }): Payment {
   const list = load();
-  const n = 1000 + list.length + 1;
+  const n = Math.max(1000, ...list.map((p) => Number(p.id.slice(2)) || 0)) + 1;
   const p: Payment = {
     id: `p-${n}`,
     reference: `HF-2026-${n}`,
@@ -104,6 +103,7 @@ export function createPayment(input: {
     cost: calcCost(input.amountMXN, input.country),
     status: "pendiente_autorizacion",
     createdAt: new Date().toISOString(),
+    destination: input.destination,
   };
   save([p, ...list]);
   return p;
@@ -132,22 +132,33 @@ export function reject(id: string, by = "Daniel Cruz (Admin)") {
   }));
 }
 
-/** Simula el avance del pago sobre Stellar: autorizado → enviado → en tránsito → recibido */
-export function advanceStatus(id: string) {
-  const order: PaymentStatus[] = ["autorizado", "enviado", "en_transito", "recibido"];
-  patch(id, (p) => {
-    const idx = order.indexOf(p.status);
-    if (idx === -1 || idx === order.length - 1) return p;
-    return { ...p, status: order[idx + 1] };
-  });
+export function setDestination(id: string, destination: string) {
+  patch(id, (p) => ({ ...p, destination }));
+}
+
+/** La transacción quedó firmada y se envió a la red; falta que la red la confirme. */
+export function markSent(id: string, hash: string) {
+  patch(id, (p) => ({
+    ...p,
+    status: "enviado",
+    stellarTxHash: hash,
+    sentAt: new Date().toISOString(),
+    txError: undefined,
+  }));
+}
+
+/** La red incluyó la transacción en un ledger. */
+export function markConfirmed(id: string, ledger: number, confirmedAt: string) {
+  patch(id, (p) => ({ ...p, status: "confirmado", ledger, confirmedAt, txError: undefined }));
+}
+
+/** La red rechazó la transacción: el pago vuelve a poder ejecutarse. */
+export function markFailed(id: string, error: string) {
+  patch(id, (p) => ({ ...p, status: "fallido", txError: error }));
 }
 
 export function attachReceipt(id: string, name: string) {
   patch(id, (p) => ({ ...p, receiptName: name }));
-}
-
-export function setTxHash(id: string, hash: string) {
-  patch(id, (p) => ({ ...p, stellarTxHash: hash }));
 }
 
 export function resetSeed() {
@@ -168,4 +179,21 @@ export function usePayments() {
     };
   }, []);
   return list;
+}
+
+export function usePayment(id: string) {
+  const [payment, setPayment] = useState<Payment | undefined>(undefined);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const refresh = () => {
+      setPayment(getById(id));
+      setLoaded(true);
+    };
+    refresh();
+    listeners.add(refresh);
+    return () => {
+      listeners.delete(refresh);
+    };
+  }, [id]);
+  return { payment, loaded };
 }

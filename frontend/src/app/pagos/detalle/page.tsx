@@ -1,23 +1,22 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import {
-  getById,
-  advanceStatus,
-  attachReceipt,
-  authorize,
-} from "@/lib/store";
+import { attachReceipt, authorize, usePayment } from "@/lib/store";
 import { COUNTRIES, fmtMXN, fmtLocal } from "@/lib/pricing";
+import {
+  createCompanyAccount,
+  getCompanyAccount,
+  type CompanyAccount,
+} from "@/lib/stellar";
 import { StatusBadge, STATUS_STEPS } from "@/components/StatusBadge";
-import { StellarPanel } from "@/components/StellarPanel";
-import type { Payment } from "@/lib/types";
+import { CompanyWallet } from "@/components/CompanyWallet";
+import { PaymentChain } from "@/components/PaymentChain";
 import {
   ArrowLeft,
   Paperclip,
   Check,
-  Play,
   FileCheck2,
 } from "lucide-react";
 
@@ -32,11 +31,25 @@ export default function DetallePage() {
 function Detalle() {
   const params = useSearchParams();
   const id = params.get("id") ?? "";
-  const [p, setP] = useState<Payment | undefined>(undefined);
+  const { payment: p, loaded } = usePayment(id);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => setP(getById(id));
-  useEffect(refresh, [id]);
+  const [company, setCompany] = useState<CompanyAccount | null>(null);
+  const [balanceKey, setBalanceKey] = useState(0);
+  useEffect(() => setCompany(getCompanyAccount()), []);
+
+  const ensureCompany = useCallback(async () => {
+    const existing = getCompanyAccount();
+    if (existing) return existing;
+    const created = await createCompanyAccount();
+    setCompany(created);
+    return created;
+  }, []);
+  const onBalanceChange = useCallback(() => setBalanceKey((k) => k + 1), []);
+
+  if (!loaded) {
+    return <div className="container-app">Cargando…</div>;
+  }
 
   if (!p) {
     return (
@@ -49,16 +62,11 @@ function Detalle() {
     );
   }
 
-  const stepIdx = STATUS_STEPS.indexOf(p.status as any);
-  const canAdvance =
-    stepIdx !== -1 && stepIdx < STATUS_STEPS.length - 1;
+  const stepIdx = STATUS_STEPS.indexOf(p.status);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) {
-      attachReceipt(p!.id, f.name);
-      refresh();
-    }
+    if (f) attachReceipt(p!.id, f.name);
   }
 
   return (
@@ -91,13 +99,7 @@ function Detalle() {
                 <p className="text-sm" style={{ color: "var(--text-2)" }}>
                   Este pago aún no ha sido autorizado por el administrador.
                 </p>
-                <button
-                  onClick={() => {
-                    authorize(p.id);
-                    refresh();
-                  }}
-                  className="btn btn-primary mt-3"
-                >
+                <button onClick={() => authorize(p.id)} className="btn btn-primary mt-3">
                   <Check size={16} /> Autorizar ahora
                 </button>
               </div>
@@ -107,17 +109,13 @@ function Detalle() {
               </p>
             ) : (
               <>
-                <Timeline current={stepIdx} />
-                {canAdvance && (
-                  <button
-                    onClick={() => {
-                      advanceStatus(p.id);
-                      refresh();
-                    }}
-                    className="btn btn-ghost mt-4"
-                  >
-                    <Play size={15} /> Avanzar estado (simular red)
-                  </button>
+                {p.status === "fallido" ? (
+                  <p className="mt-3 text-sm" style={{ color: "var(--error)" }}>
+                    La red rechazó la transacción. Revisa el motivo y reintenta desde
+                    «Ejecución en Stellar testnet».
+                  </p>
+                ) : (
+                  <Timeline current={stepIdx} />
                 )}
               </>
             )}
@@ -141,6 +139,7 @@ function Detalle() {
                 value={fmtLocal(p.cost.amountReceivedLocal, p.cost.localCurrency)}
                 accent
               />
+              <Line label="Se liquida en testnet" value={`${p.cost.amountXLM} XLM`} />
             </div>
           </div>
 
@@ -189,7 +188,8 @@ function Detalle() {
             )}
           </div>
 
-          <StellarPanel reference={p.reference} />
+          <PaymentChain payment={p} ensureCompany={ensureCompany} onBalanceChange={onBalanceChange} />
+          <CompanyWallet company={company} onCreate={ensureCompany} refreshKey={balanceKey} />
         </div>
       </div>
     </div>
@@ -197,7 +197,7 @@ function Detalle() {
 }
 
 function Timeline({ current }: { current: number }) {
-  const labels = ["Autorizado", "Enviado", "En tránsito", "Recibido"];
+  const labels = ["Autorizado", "Enviado a la red", "Confirmado en la red"];
   return (
     <div className="mt-4 space-y-3">
       {labels.map((l, i) => {
@@ -223,6 +223,17 @@ function Timeline({ current }: { current: number }) {
           </div>
         );
       })}
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed text-xs font-bold"
+          style={{ borderColor: "var(--border-2)", color: "var(--text-3)" }}
+        >
+          {labels.length + 1}
+        </div>
+        <span className="text-sm" style={{ color: "var(--text-3)" }}>
+          Abonado en el banco del colaborador · fase posterior (off-ramp)
+        </span>
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ const features = [
   {
     icon: Eye,
     title: "Estado de principio a fin",
-    desc: "Enviado, en tránsito o recibido. Una sola vista confiable, sin confundir «lo envié» con «ya le llegó».",
+    desc: "Autorizado, enviado o confirmado en la red. Una sola vista confiable, sin confundir «lo envié» con «ya le llegó».",
   },
   {
     icon: Calculator,

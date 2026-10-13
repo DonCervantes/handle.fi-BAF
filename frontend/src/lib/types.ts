@@ -5,10 +5,10 @@ export type Country = "CO" | "CL" | "AR";
 export type PaymentStatus =
   | "pendiente_autorizacion"
   | "autorizado"
-  | "enviado"
-  | "en_transito"
-  | "recibido"
-  | "rechazado";
+  | "enviado" // transacción enviada a Stellar, esperando confirmación
+  | "confirmado" // incluida en un ledger: verificable en la red
+  | "fallido" // la red rechazó la transacción
+  | "rechazado"; // el administrador no autorizó el pago
 
 export interface CostBreakdown {
   amountMXN: number; // lo que sale de la empresa en pesos
@@ -18,6 +18,7 @@ export interface CostBreakdown {
   networkFeeMXN: number; // comisión de red (Stellar)
   totalCostMXN: number; // amount + comisiones
   amountReceivedLocal: number; // lo que recibe el colaborador en moneda local
+  amountXLM: string; // monto que se liquida en Stellar testnet
 }
 
 export interface Payment {
@@ -29,8 +30,13 @@ export interface Payment {
   cost: CostBreakdown;
   status: PaymentStatus;
   createdAt: string;
+  destination?: string; // cuenta Stellar (G...) del colaborador
   authorizedBy?: string;
   authorizedAt?: string;
-  stellarTxHash?: string; // hash de la transacción en testnet (fase posterior / demo)
+  stellarTxHash?: string;
+  sentAt?: string;
+  ledger?: number;
+  confirmedAt?: string;
+  txError?: string;
   receiptName?: string; // nombre del comprobante adjunto
 }

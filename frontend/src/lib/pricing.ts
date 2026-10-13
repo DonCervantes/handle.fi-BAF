@@ -17,6 +17,16 @@ export const COUNTRIES: Record<
 const SERVICE_FEE_PCT = 0.015; // 1.5% comisión de servicio
 const NETWORK_FEE_MXN = 3.5; // comisión de red (Stellar) simulada
 
+/** 1 XLM = XLM_MXN pesos. Simulado: en testnet el XLM no tiene precio real. */
+export const XLM_MXN = 6;
+
+/** Una cuenta nueva en Stellar requiere al menos 1 XLM de saldo inicial. */
+export const MIN_AMOUNT_MXN = XLM_MXN;
+
+export function toXLM(amountMXN: number): string {
+  return (Math.floor((amountMXN / XLM_MXN) * 1e7) / 1e7).toFixed(7).replace(/\.?0+$/, "");
+}
+
 /**
  * Calcula el costo total de un pago internacional.
  * Devuelve el desglose que el contador ve ANTES de ejecutar (Historia 2).
@@ -36,6 +46,7 @@ export function calcCost(amountMXN: number, country: Country): CostBreakdown {
     networkFeeMXN,
     totalCostMXN,
     amountReceivedLocal,
+    amountXLM: toXLM(amountMXN),
   };
 }
 

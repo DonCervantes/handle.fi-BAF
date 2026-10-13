@@ -1,22 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { calcCost, COUNTRIES, fmtMXN, fmtLocal } from "@/lib/pricing";
+import { calcCost, COUNTRIES, fmtMXN, fmtLocal, MIN_AMOUNT_MXN, XLM_MXN } from "@/lib/pricing";
 import { createPayment } from "@/lib/store";
 import type { Country } from "@/lib/types";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Shuffle } from "lucide-react";
 
 export default function NuevoPago() {
   const router = useRouter();
   const [beneficiary, setBeneficiary] = useState("");
   const [country, setCountry] = useState<Country>("CO");
   const [concept, setConcept] = useState("");
-  const [amount, setAmount] = useState<string>("10000");
+  const [amount, setAmount] = useState<string>("1500");
+  const [destination, setDestination] = useState("");
+  const [stellar, setStellar] = useState<typeof import("@/lib/stellar") | null>(null);
+  useEffect(() => {
+    import("@/lib/stellar").then(setStellar);
+  }, []);
 
   const amountNum = Number(amount) || 0;
   const cost = useMemo(() => calcCost(amountNum, country), [amountNum, country]);
-  const valid = beneficiary.trim() !== "" && amountNum > 0;
+  const amountOk = amountNum >= MIN_AMOUNT_MXN;
+  const destOk =
+    destination.trim() === "" || (stellar !== null && stellar.isValidAddress(destination));
+  const valid = beneficiary.trim() !== "" && amountOk && destOk;
 
   function submit() {
     if (!valid) return;
@@ -25,6 +33,7 @@ export default function NuevoPago() {
       country,
       concept: concept.trim() || "Pago a colaborador",
       amountMXN: amountNum,
+      destination: destination.trim() || undefined,
     });
     router.push(`/pagos/detalle?id=${p.id}`);
   }
@@ -82,10 +91,38 @@ export default function NuevoPago() {
               <input
                 className="input"
                 type="number"
-                min={0}
+                min={MIN_AMOUNT_MXN}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
+              {amount !== "" && !amountOk && (
+                <p className="mt-1 text-xs" style={{ color: "var(--error)" }}>
+                  El monto mínimo es {fmtMXN(MIN_AMOUNT_MXN)} (1 XLM, reserva mínima de Stellar).
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="label">Cuenta Stellar del colaborador (opcional)</label>
+              <input
+                className="input"
+                placeholder="G... — también puedes capturarla al ejecutar"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+              />
+              {!destOk && stellar && (
+                <p className="mt-1 text-xs" style={{ color: "var(--error)" }}>
+                  No es una clave pública de Stellar válida.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => stellar && setDestination(stellar.randomTestAddress())}
+                disabled={!stellar}
+                className="mt-2 flex items-center gap-1.5 text-xs underline-offset-2 hover:underline"
+                style={{ color: "var(--accent-hover)" }}
+              >
+                <Shuffle size={12} /> Generar dirección de prueba
+              </button>
             </div>
           </div>
         </div>
@@ -116,6 +153,7 @@ export default function NuevoPago() {
                   {fmtLocal(cost.amountReceivedLocal, cost.localCurrency)}
                 </div>
               </div>
+              <Row label="Se liquida en testnet" value={`${cost.amountXLM} XLM`} muted />
             </div>
           </div>
 
@@ -128,7 +166,7 @@ export default function NuevoPago() {
             Enviar a autorización <ArrowRight size={16} />
           </button>
           <p className="mt-2 text-center text-xs" style={{ color: "var(--text-3)" }}>
-            Valores de tipo de cambio simulados para el prototipo (testnet).
+            Tipos de cambio simulados (incluido 1 XLM = {XLM_MXN} MXN). El pago se liquida en XLM de prueba.
           </p>
         </div>
       </div>
