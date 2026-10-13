@@ -1,13 +1,18 @@
 # Handle.Fi
 
-Front del producto Handle.Fi, construido con **Next.js 14 (App Router) + React + TypeScript + Tailwind CSS**.
-Todo el código del front está en la carpeta [`frontend/`](frontend/).
+**Handle.Fi** le da a la contadora o contador de una PyME mexicana una sola vista para **controlar de principio a fin los pagos a colaboradores en el extranjero** (Colombia, Chile y Argentina): el costo real de cada pago antes de enviarlo, su estado verificable en la red y el comprobante conciliado. Las transferencias se liquidan sobre la **red de pruebas (testnet) de Stellar**, con la referencia del pago viajando en el memo de la transacción.
+
+🔗 **Demo en vivo:** https://handle-fi-latam.vercel.app
+
+El front está construido con **Next.js 14 + React + TypeScript + Tailwind CSS** y vive en la carpeta [`frontend/`](frontend/).
+
+---
 
 ## Requisitos
 
 - **Node.js 18.17 o superior** (recomendado 20 LTS). Verifica tu versión con `node -v`.
 - **npm 9 o superior** (viene incluido con Node.js). Verifica con `npm -v`.
-- Conexión a internet: la vista de detalle de un pago lee en vivo la **red de pruebas (testnet) de Stellar** a través de Horizon (`https://horizon-testnet.stellar.org`).
+- Conexión a internet: la vista de detalle de un pago lee y escribe en vivo sobre la **testnet de Stellar** a través de Horizon (`https://horizon-testnet.stellar.org`).
 - No se necesitan variables de entorno para correrlo: los valores por defecto están en `frontend/.env.example` y ya vienen aplicados en el código.
 
 ## Instalación
@@ -38,7 +43,7 @@ Rutas disponibles una vez levantado:
 | `/dashboard` | Tablero de pagos (estado de cada pago) |
 | `/pagos/nuevo` | Registrar un pago (cálculo de costo total) |
 | `/autorizacion` | Autorización del administrador |
-| `/pagos/detalle?id=<id>` | Detalle del pago + verificación on-chain en Stellar testnet |
+| `/pagos/detalle?id=<id>` | Detalle del pago + ejecución y verificación en Stellar testnet |
 
 ### Modo producción (opcional)
 
