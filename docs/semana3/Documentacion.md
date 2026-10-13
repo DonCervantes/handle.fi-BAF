@@ -88,7 +88,9 @@ claramente marcados como tales en la interfaz.
 
 ### Enlace al front hosteado
 
-🔗 **Demo en Vercel:** `_[pegar aquí la URL de Vercel; también va en el campo Website de Apex]_`
+🔗 **Demo en Vercel:** https://frontend-nine-tau-55.vercel.app
+
+(Esta misma URL va en el campo **Website** del proyecto en Apex.)
 
 ---
 
